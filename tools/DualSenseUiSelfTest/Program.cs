@@ -1,4 +1,6 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -80,6 +82,26 @@ internal static class Program
 
         Console.WriteLine(
             $"UI_SELF_TEST_PASS|selection={selectionText!.Text}|nonBackgroundPixels={nonBackgroundPixels}|png={output}");
+        var overlay = new RecordingOverlay();
+        IntPtr foreground = GetForegroundWindow();
+        overlay.Show();
+        long styles = GetWindowLongPtr(new WindowInteropHelper(overlay).Handle, -20).ToInt64();
+        Assert((styles & 0x080000A0) == 0x080000A0,
+            "Overlay must be non-activating, click-through, and absent from the taskbar.");
+        Assert(GetForegroundWindow() == foreground, "Showing overlay stole focus.");
+        foreach (RecordingOverlayState state in Enum.GetValues<RecordingOverlayState>())
+        {
+            overlay.SetState(state);
+            overlay.UpdateLayout();
+            var overlayBitmap = new RenderTargetBitmap(180, 54, 96, 96, PixelFormats.Pbgra32);
+            overlayBitmap.Render(overlay);
+            var overlayEncoder = new PngBitmapEncoder();
+            overlayEncoder.Frames.Add(BitmapFrame.Create(overlayBitmap));
+            using var overlayStream = File.Create(Path.Combine(Path.GetDirectoryName(output)!, $"overlay-{state}.png"));
+            overlayEncoder.Save(overlayStream);
+        }
+        overlay.Close();
+        Console.WriteLine("OVERLAY_TEST_PASS|native styles and foreground preservation");
         window.Close();
         app.Shutdown();
     }
@@ -108,4 +130,9 @@ internal static class Program
     }
 
     private sealed record SnapshotChoice(string FriendlyName);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
 }

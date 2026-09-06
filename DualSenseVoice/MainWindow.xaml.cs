@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     bool suppressDeviceSelection;
     bool windowClosed;
     bool? modelIsValid;
+    readonly RecordingOverlay overlay = new();
 
     bool IsRecording =>
         bluetoothCapture?.IsRecording == true || windowsCapture is not null;
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
         connectionTimer.Tick += ConnectionTimer_Tick;
         Loaded += (_, _) =>
         {
+            overlay.Show();
             CleanupInterruptedFiles(Path.GetTempPath(), ModelPath);
             UpdateModelState();
             RefreshDevices();
@@ -88,6 +90,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             windowClosed = true;
+            overlay.Close();
             modelDownloadCancellation?.Cancel();
             recordingTimer.Stop();
             connectionTimer.Stop();
@@ -237,7 +240,7 @@ public partial class MainWindow : Window
 
             SetStatus(HasValidModel
                 ? "ミュート中 — DualSenseのCreateボタンで音声入力を開始"
-                : "ミュート中 — 先に認識モデルを準備してください");
+                : "ミュート中 — 先に認識モデルを準備してください", HasValidModel ? RecordingOverlayState.Ready : RecordingOverlayState.Attention);
         }
         catch (Exception ex)
         {
@@ -325,7 +328,7 @@ public partial class MainWindow : Window
             recordingTimer.Stop();
             recordingTimer.Start();
             StatusCuePlayer.PlayStarted();
-            SetStatus($"● マイクON — 話してください — {choice.FriendlyName}");
+            SetStatus($"● マイクON — 話してください — {choice.FriendlyName}", RecordingOverlayState.Recording);
             DeviceBox.IsEnabled = false;
             RefreshButton.IsEnabled = false;
         }
@@ -442,7 +445,7 @@ public partial class MainWindow : Window
                 ? $"接続が切れました — 受信済み音声 {seconds:F1}秒を文字に変換中…"
                 : automatic
                     ? $"60秒で自動ミュート — 音声 {seconds:F1}秒を文字に変換中…"
-                    : $"ミュート中 — 音声 {seconds:F1}秒を文字に変換中…");
+                    : $"ミュート中 — 音声 {seconds:F1}秒を文字に変換中…", RecordingOverlayState.Processing);
 
             using var reader = new WaveFileReader(recordingPath!);
             using var wav = new MemoryStream();
@@ -477,7 +480,7 @@ public partial class MainWindow : Window
                     _ => " 自動貼り付けできませんでした。画面の結果をコピーしてください。",
                 };
             }
-            SetStatus(completionStatus);
+            SetStatus(completionStatus, connectionLost || TranscriptBox.Text.Length == 0 ? RecordingOverlayState.Attention : RecordingOverlayState.Ready);
         }
         catch (Exception ex)
         {
@@ -702,7 +705,7 @@ public partial class MainWindow : Window
             File.Move(temporaryPath, ModelPath, true);
             modelIsValid = true;
             UpdateModelState();
-            SetStatus("ミュート中 — DualSenseのCreateボタンで音声入力を開始");
+            SetStatus("ミュート中 — DualSenseのCreateボタンで音声入力を開始", RecordingOverlayState.Ready);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -796,9 +799,16 @@ public partial class MainWindow : Window
                 : "ミュート中 — クリップボードへコピーできませんでした。");
     }
 
-    void SetStatus(string text)
+    void OverlaySettings_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (OverlayPositionBox is null || OverlaySizeBox is null) return;
+        overlay.Place(OverlayPositionBox.SelectedIndex == 1, OverlaySizeBox.SelectedIndex == 1);
+    }
+
+    void SetStatus(string text, RecordingOverlayState state = RecordingOverlayState.Attention)
     {
         StatusText.Text = text;
+        overlay.SetState(state);
         RaiseLiveRegionChanged(StatusText);
     }
 

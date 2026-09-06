@@ -34,7 +34,7 @@
               <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
                 <Grid>
                   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
-                  <TextBlock x:Name="SelectionText" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" Text="{Binding SelectedItem.FriendlyName, RelativeSource={RelativeSource TemplatedParent}}" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
+                  <TextBlock x:Name="SelectionText" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"><TextBlock.Text><PriorityBinding><Binding Path="SelectedItem.FriendlyName" RelativeSource="{RelativeSource TemplatedParent}"/><Binding Path="SelectedItem.Content" RelativeSource="{RelativeSource TemplatedParent}"/></PriorityBinding></TextBlock.Text></TextBlock>
                   <Path Grid.Column="1" Width="10" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="{TemplateBinding Foreground}" Data="M 0 0 L 5 5 L 10 0 Z" IsHitTestVisible="False"/>
                 </Grid>
               </Border>

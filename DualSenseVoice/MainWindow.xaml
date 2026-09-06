@@ -4,7 +4,7 @@
  Language="ja-JP" UseLayoutRounding="True" SnapsToDevicePixels="True"
  Background="{DynamicResource Canvas}" Foreground="{DynamicResource Ink}" WindowStartupLocation="CenterScreen">
  <Grid Margin="36">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel>
    <TextBlock Text="D U A L S E N S E   V O I C E" Foreground="{DynamicResource Accent}" FontSize="12" FontWeight="Bold"/>
    <TextBlock Text="Createボタンを押して、話す。" FontSize="30" FontWeight="SemiBold" Margin="0,7,0,4"/>
@@ -32,5 +32,10 @@
    <CheckBox x:Name="AutoPasteBox" Content="終了時、元のアプリへ自動貼り付け" IsChecked="True" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" AutomationProperties.HelpText="音声入力を開始する直前に選んでいたアプリへ、認識結果を貼り付けます"/>
    <Button Grid.Column="1" x:Name="CopyButton" Content="コピー" Background="{DynamicResource Secondary}" Click="Copy_Click" AutomationProperties.HelpText="文字起こし結果をクリップボードへコピーします"/>
   </Grid>
+  <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0">
+   <TextBlock Text="録音状態の表示" VerticalAlignment="Center" Margin="0,0,12,0"/>
+   <ComboBox x:Name="OverlayPositionBox" Width="110" SelectedIndex="0" SelectionChanged="OverlaySettings_Changed" AutomationProperties.Name="オーバーレイの位置"><ComboBoxItem Content="右上"/><ComboBoxItem Content="左上"/></ComboBox>
+   <ComboBox x:Name="OverlaySizeBox" Width="90" Margin="8,0,0,0" SelectedIndex="0" SelectionChanged="OverlaySettings_Changed" AutomationProperties.Name="オーバーレイのサイズ"><ComboBoxItem Content="標準"/><ComboBoxItem Content="大きい"/></ComboBox>
+  </StackPanel>
  </Grid>
 </Window>
