@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     readonly DispatcherTimer recordingTimer = new();
     readonly DispatcherTimer connectionTimer = new();
     DualSenseBluetoothCapture? bluetoothCapture;
-    DualSenseMuteButtonMonitor? usbButtonMonitor;
+    DualSenseCreateButtonMonitor? usbButtonMonitor;
     WasapiCapture? windowsCapture;
     WaveFileWriter? windowsWriter;
     TaskCompletionSource? windowsCaptureStopped;
@@ -112,7 +112,7 @@ public partial class MainWindow : Window
         {
             var choices = new List<AudioInputChoice>();
             DualSenseUsbDevice? usbController =
-                DualSenseMuteButtonMonitor.EnumerateConnectedUsb().FirstOrDefault();
+                DualSenseCreateButtonMonitor.EnumerateConnectedUsb().FirstOrDefault();
 
             if (usbController is not null)
             {
@@ -178,7 +178,7 @@ public partial class MainWindow : Window
             var bluetoothPaths = DualSenseBluetoothCapture.EnumerateConnected()
                 .Select(device => device.DevicePath)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var usbPaths = DualSenseMuteButtonMonitor.EnumerateConnectedUsb()
+            var usbPaths = DualSenseCreateButtonMonitor.EnumerateConnectedUsb()
                 .Select(device => device.DevicePath)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -225,18 +225,18 @@ public partial class MainWindow : Window
             {
                 bluetoothCapture = DualSenseBluetoothCapture.Connect(
                     choice.BluetoothDevicePath!);
-                bluetoothCapture.MuteButtonPressed += Controller_MuteButtonPressed;
+                bluetoothCapture.CreateButtonPressed += Controller_CreateButtonPressed;
                 bluetoothCapture.ConnectionLost += Controller_ConnectionLost;
             }
             else
             {
-                usbButtonMonitor = DualSenseMuteButtonMonitor.Connect(
+                usbButtonMonitor = DualSenseCreateButtonMonitor.Connect(
                     choice.ButtonDevicePath!);
-                usbButtonMonitor.MuteButtonPressed += Controller_MuteButtonPressed;
+                usbButtonMonitor.CreateButtonPressed += Controller_CreateButtonPressed;
             }
 
             SetStatus(HasValidModel
-                ? "ミュート中 — DualSenseのマイクボタンで音声入力を開始"
+                ? "ミュート中 — DualSenseのCreateボタンで音声入力を開始"
                 : "ミュート中 — 先に認識モデルを準備してください");
         }
         catch (Exception ex)
@@ -250,7 +250,7 @@ public partial class MainWindow : Window
     {
         if (bluetoothCapture is not null)
         {
-            bluetoothCapture.MuteButtonPressed -= Controller_MuteButtonPressed;
+            bluetoothCapture.CreateButtonPressed -= Controller_CreateButtonPressed;
             bluetoothCapture.ConnectionLost -= Controller_ConnectionLost;
             bluetoothCapture.Dispose();
             bluetoothCapture = null;
@@ -258,13 +258,13 @@ public partial class MainWindow : Window
 
         if (usbButtonMonitor is not null)
         {
-            usbButtonMonitor.MuteButtonPressed -= Controller_MuteButtonPressed;
+            usbButtonMonitor.CreateButtonPressed -= Controller_CreateButtonPressed;
             usbButtonMonitor.Dispose();
             usbButtonMonitor = null;
         }
     }
 
-    void Controller_MuteButtonPressed(object? sender, EventArgs e)
+    void Controller_CreateButtonPressed(object? sender, EventArgs e)
     {
         if (!Dispatcher.HasShutdownStarted)
             Dispatcher.BeginInvoke(new Action(() => _ = ToggleFromControllerAsync()));
@@ -702,7 +702,7 @@ public partial class MainWindow : Window
             File.Move(temporaryPath, ModelPath, true);
             modelIsValid = true;
             UpdateModelState();
-            SetStatus("ミュート中 — DualSenseのマイクボタンで音声入力を開始");
+            SetStatus("ミュート中 — DualSenseのCreateボタンで音声入力を開始");
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {

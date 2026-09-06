@@ -28,8 +28,8 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
     private const int InputReportLength = 78;
     private const int MediaReportLength = 398;
     private const int OpusFrameSamples = 480;
-    private const int BluetoothButtons2Offset = 11;
-    private const byte MicrophoneButtonMask = 0x04;
+    private const int BluetoothButtons1Offset = 10;
+    private const byte CreateButtonMask = 0x10;
 
     private readonly object audioLock = new();
     private readonly short[] pcm = new short[OpusFrameSamples];
@@ -47,10 +47,10 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
     private long sampleEnergy;
     private int accepting;
     private int recording;
-    private bool previousMuteButtonPressed;
+    private bool previousCreateButtonPressed;
     private bool disposed;
 
-    internal event EventHandler? MuteButtonPressed;
+    internal event EventHandler? CreateButtonPressed;
     internal event EventHandler<DualSenseConnectionLostEventArgs>? ConnectionLost;
 
     internal bool IsRecording => Volatile.Read(ref recording) != 0;
@@ -218,12 +218,12 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
 
     private void ProcessRawReport(byte[] report)
     {
-        if (IsMuteButtonReport(report))
+        if (IsCreateButtonReport(report))
         {
-            bool pressed = (report[BluetoothButtons2Offset] & MicrophoneButtonMask) != 0;
-            if (pressed && !previousMuteButtonPressed)
-                MuteButtonPressed?.Invoke(this, EventArgs.Empty);
-            previousMuteButtonPressed = pressed;
+            bool pressed = (report[BluetoothButtons1Offset] & CreateButtonMask) != 0;
+            if (pressed && !previousCreateButtonPressed)
+                CreateButtonPressed?.Invoke(this, EventArgs.Empty);
+            previousCreateButtonPressed = pressed;
         }
 
         if (Volatile.Read(ref accepting) == 0 ||
@@ -259,14 +259,14 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
         }
     }
 
-    internal static bool IsMuteButtonReport(ReadOnlySpan<byte> report) =>
-        report.Length > BluetoothButtons2Offset &&
+    internal static bool IsCreateButtonReport(ReadOnlySpan<byte> report) =>
+        report.Length > BluetoothButtons1Offset &&
         report[0] == 0x31 &&
         (report[1] & 0x02) == 0;
 
-    internal static bool HasMuteButtonPressed(ReadOnlySpan<byte> report) =>
-        IsMuteButtonReport(report) &&
-        (report[BluetoothButtons2Offset] & MicrophoneButtonMask) != 0;
+    internal static bool HasCreateButtonPressed(ReadOnlySpan<byte> report) =>
+        IsCreateButtonReport(report) &&
+        (report[BluetoothButtons1Offset] & CreateButtonMask) != 0;
 
     internal async Task<DualSenseBluetoothRecording> StopRecordingAsync()
     {

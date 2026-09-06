@@ -23,11 +23,11 @@ try
 
     if (buttonMode)
     {
-        Console.WriteLine("BUTTON_WAIT|press the physical microphone button to unmute");
-        await WaitForMuteButtonAsync(capture, TimeSpan.FromSeconds(45));
+        Console.WriteLine("BUTTON_WAIT|press the physical Create button to unmute");
+        await WaitForCreateButtonAsync(capture, TimeSpan.FromSeconds(45));
         capture.StartRecording(wavePath);
-        Console.WriteLine("BUTTON_UNMUTED|speak, then press the microphone button again");
-        await WaitForMuteButtonAsync(capture, TimeSpan.FromSeconds(45));
+        Console.WriteLine("BUTTON_UNMUTED|speak, then press the Create button again");
+        await WaitForCreateButtonAsync(capture, TimeSpan.FromSeconds(45));
     }
     else
     {
@@ -60,20 +60,20 @@ finally
     if (File.Exists(wavePath)) File.Delete(wavePath);
 }
 
-static async Task WaitForMuteButtonAsync(
+static async Task WaitForCreateButtonAsync(
     DualSenseBluetoothCapture capture,
     TimeSpan timeout)
 {
     var pressed = new TaskCompletionSource(
         TaskCreationOptions.RunContinuationsAsynchronously);
     EventHandler handler = (_, _) => pressed.TrySetResult();
-    capture.MuteButtonPressed += handler;
+    capture.CreateButtonPressed += handler;
     try
     {
         await pressed.Task.WaitAsync(timeout);
     }
     finally
     {
-        capture.MuteButtonPressed -= handler;
+        capture.CreateButtonPressed -= handler;
     }
 }

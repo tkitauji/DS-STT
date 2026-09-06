@@ -15,7 +15,7 @@ bluetoothReleased[0] = 0x31;
 bluetoothReleased[1] = 0x00;
 
 var bluetoothPressed = (byte[])bluetoothReleased.Clone();
-bluetoothPressed[11] = 0x04;
+bluetoothPressed[10] = 0x10;
 
 var bluetoothAudio = (byte[])bluetoothPressed.Clone();
 bluetoothAudio[1] = 0x02;
@@ -25,25 +25,40 @@ var usbReleased = new byte[64];
 usbReleased[0] = 0x01;
 
 var usbPressed = (byte[])usbReleased.Clone();
-usbPressed[10] = 0x04;
+usbPressed[9] = 0x10;
 
-Assert(DualSenseBluetoothCapture.IsMuteButtonReport(bluetoothReleased),
+Assert(DualSenseBluetoothCapture.IsCreateButtonReport(bluetoothReleased),
     "Bluetooth controller report should be accepted.");
-Assert(!DualSenseBluetoothCapture.HasMuteButtonPressed(bluetoothReleased),
+Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothReleased),
     "Released Bluetooth button should be false.");
-Assert(DualSenseBluetoothCapture.HasMuteButtonPressed(bluetoothPressed),
+Assert(DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothPressed),
     "Pressed Bluetooth button should be true.");
-Assert(!DualSenseBluetoothCapture.IsMuteButtonReport(bluetoothAudio),
+Assert(!DualSenseBluetoothCapture.IsCreateButtonReport(bluetoothAudio),
     "Bluetooth microphone audio must not look like a button report.");
 
-Assert(DualSenseMuteButtonMonitor.IsMuteButtonReport(usbReleased),
+Assert(DualSenseCreateButtonMonitor.IsCreateButtonReport(usbReleased),
     "USB controller report should be accepted.");
-Assert(!DualSenseMuteButtonMonitor.HasMuteButtonPressed(usbReleased),
+Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbReleased),
     "Released USB button should be false.");
-Assert(DualSenseMuteButtonMonitor.HasMuteButtonPressed(usbPressed),
+Assert(DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbPressed),
     "Pressed USB button should be true.");
-Assert(!DualSenseMuteButtonMonitor.IsMuteButtonReport(bluetoothPressed),
+Assert(!DualSenseCreateButtonMonitor.IsCreateButtonReport(bluetoothPressed),
     "Bluetooth input must not be parsed using the USB layout.");
+
+var usbMuteOnly = (byte[])usbReleased.Clone();
+usbMuteOnly[10] = 0x04;
+var bluetoothMuteOnly = (byte[])bluetoothReleased.Clone();
+bluetoothMuteOnly[11] = 0x04;
+Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbMuteOnly),
+    "USB microphone button must not trigger Create.");
+Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothMuteOnly),
+    "Bluetooth microphone button must not trigger Create.");
+Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothAudio),
+    "Audio frames must never trigger Create.");
+Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(new byte[9]),
+    "Truncated USB reports must be ignored.");
+Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(new byte[10]),
+    "Truncated Bluetooth reports must be ignored.");
 
 List<RuntimeLibrary> optimizedOrder = App.GetWhisperRuntimeOrder(optimizedCpu: true);
 List<RuntimeLibrary> compatibleOrder = App.GetWhisperRuntimeOrder(optimizedCpu: false);

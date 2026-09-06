@@ -21,7 +21,7 @@ static async Task RunAsync()
             "Close DualSense Voice before running the USB hardware probe.");
 
     IReadOnlyList<DualSenseUsbDevice> controllers =
-        DualSenseMuteButtonMonitor.EnumerateConnectedUsb();
+        DualSenseCreateButtonMonitor.EnumerateConnectedUsb();
     foreach (DualSenseUsbDevice controller in controllers)
         Console.WriteLine($"USB_CONTROLLER|{controller.FriendlyName}|{controller.DevicePath}");
     DualSenseUsbDevice selectedController = controllers.FirstOrDefault()
@@ -70,7 +70,7 @@ static async Task RunAsync()
                     "USB capture was empty or silent. Speak toward the controller between the two button presses.");
 
             Console.WriteLine(
-                "RESULT|USB standard microphone and physical mute-button capture passed.");
+                "RESULT|USB standard microphone and physical Create-button capture passed.");
         }
         finally
         {
@@ -88,8 +88,8 @@ static async Task<UsbCaptureResult> CaptureBetweenButtonPressesAsync(
     MMDevice endpoint,
     string wavePath)
 {
-    using var buttonMonitor = DualSenseMuteButtonMonitor.Connect(controller.DevicePath);
-    Console.WriteLine("BUTTON_WAIT|Press the physical microphone button to start USB capture.");
+    using var buttonMonitor = DualSenseCreateButtonMonitor.Connect(controller.DevicePath);
+    Console.WriteLine("BUTTON_WAIT|Press the physical Create button to start USB capture.");
     await WaitForButtonAsync(buttonMonitor, TimeSpan.FromSeconds(45));
     bool? muteAfterStartPress = TryGetEndpointMute(endpoint);
 
@@ -110,7 +110,7 @@ static async Task<UsbCaptureResult> CaptureBetweenButtonPressesAsync(
 
         capture.StartRecording();
         Console.WriteLine(
-            $"CAPTURE_STARTED|format={capture.WaveFormat}|Speak, then press the microphone button again.");
+            $"CAPTURE_STARTED|format={capture.WaveFormat}|Speak, then press the Create button again.");
         await WaitForButtonAsync(buttonMonitor, TimeSpan.FromSeconds(45));
         bool? muteAfterStopPress = TryGetEndpointMute(endpoint);
         capture.StopRecording();
@@ -134,20 +134,20 @@ static async Task<UsbCaptureResult> CaptureBetweenButtonPressesAsync(
 }
 
 static async Task WaitForButtonAsync(
-    DualSenseMuteButtonMonitor monitor,
+    DualSenseCreateButtonMonitor monitor,
     TimeSpan timeout)
 {
     var pressed = new TaskCompletionSource(
         TaskCreationOptions.RunContinuationsAsynchronously);
     EventHandler handler = (_, _) => pressed.TrySetResult();
-    monitor.MuteButtonPressed += handler;
+    monitor.CreateButtonPressed += handler;
     try
     {
         await pressed.Task.WaitAsync(timeout);
     }
     finally
     {
-        monitor.MuteButtonPressed -= handler;
+        monitor.CreateButtonPressed -= handler;
     }
 }
 

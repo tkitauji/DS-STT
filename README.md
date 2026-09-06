@@ -2,7 +2,7 @@
 
 [![Windows build](https://github.com/tkitauji/dualsense-voice-input/actions/workflows/build.yml/badge.svg)](https://github.com/tkitauji/dualsense-voice-input/actions/workflows/build.yml)
 
-USBまたはBluetooth接続したDualSenseの内蔵マイクを使い、ローカルのWhisperで日本語を文字起こしするWindowsアプリです。コントローラーの物理マイクボタンを押すと音声入力を開始し、もう一度押すと文字起こしして元のアプリへ貼り付けます。画面上の録音ボタンやグローバルホットキーはありません。
+USBまたはBluetooth接続したDualSenseの内蔵マイクを使い、ローカルのWhisperで日本語を文字起こしするWindowsアプリです。コントローラーの物理Createボタンを押すと音声入力を開始し、もう一度押すと文字起こしして元のアプリへ貼り付けます。画面上の録音ボタンやグローバルホットキーはありません。
 
 ## 必要環境
 
@@ -17,7 +17,7 @@ USBまたはBluetooth接続したDualSenseの内蔵マイクを使い、ロー�
 2. `DualSenseVoice.sln`をVisual Studioで開き、NuGetパッケージを復元します。
 3. x64で起動します。USBではWindows標準マイク、Bluetoothでは直接入力が自動選択され、ミュート待機状態になります。
 4. 「モデルを準備」を押します（初回のみ）。
-5. 入力したいアプリにカーソルを置き、DualSenseのマイクボタンを押して話します。短い上昇音が鳴ります。もう一度押すと下降音が鳴り、音声が文字へ変換されて入力先へ貼り付けられます。押し忘れた場合は60秒で自動終了します。
+5. 入力したいアプリにカーソルを置き、DualSenseのCreateボタンを押して話します。短い上昇音が鳴ります。もう一度押すと下降音が鳴り、音声が文字へ変換されて入力先へ貼り付けられます。押し忘れた場合は60秒で自動終了します。
 
 ## Microsoft Store提出
 
@@ -53,7 +53,7 @@ USBまたはBluetooth接続したDualSenseの内蔵マイクを使い、ロー�
 
 `Packaging/AppxManifest.xml.in`には `microphone` と `runFullTrust` capability、packaged desktop appの実行属性、VC++ Desktop framework依存、必須ロゴが設定済みです。リポジトリ既定値で作ったMSIXは開発検証用の未署名パッケージであり、Partner CenterのIdentity値に置き換えてから提出してください。
 
-Partner Centerの制限付き機能の説明には、`runFullTrust`を「DualSense HID Raw Inputからの物理マイクボタンおよび音声の受信、Bluetooth音声クロックの送信、ユーザー操作によるクリップボード貼り付けに必要」と記載してください。Bluetooth音声はWindowsの通常の録音デバイスではなく、アプリがHIDから直接取得します。
+Partner Centerの制限付き機能の説明には、`runFullTrust`を「DualSense HID Raw Inputからの物理Createボタンおよび音声の受信、Bluetooth音声クロックの送信、ユーザー操作によるクリップボード貼り付けに必要」と記載してください。Bluetooth音声はWindowsの通常の録音デバイスではなく、アプリがHIDから直接取得します。
 
 ## 開発用MSIXの実機インストール
 
@@ -71,8 +71,8 @@ Partner Centerの制限付き機能の説明には、`runFullTrust`を「DualSen
 
 - 音声認識は端末内で完結します。初回のモデル取得だけネット接続が必要です。
 - 起動時にCPU命令セットを確認し、AVX・AVX2・FMA・F16C対応環境では高速版、それ以外では同梱のNo-AVX版Whisperランタイムを自動選択します。
-- Bluetooth接続では、物理マイクボタンとDualSense独自のHID音声報告をRaw Inputで受け取り、Opusをアプリ内で直接PCMへ復号します。ミュート中は音声ストリームを停止します。仮想マイクやカーネルドライバーはインストールしません。
-- USB接続では、Windowsが公開する標準録音デバイスからWASAPIで音声を取得し、物理マイクボタンだけをRaw Inputで監視します。
+- Bluetooth接続では、物理CreateボタンとDualSense独自のHID音声報告をRaw Inputで受け取り、Opusをアプリ内で直接PCMへ復号します。ミュート中は音声ストリームを停止します。仮想マイクやカーネルドライバーはインストールしません。
+- USB接続では、Windowsが公開する標準録音デバイスからWASAPIで音声を取得し、物理CreateボタンだけをRaw Inputで監視します。
 - USB単独診断`run-usb-test.ps1`は、アプリと同じWASAPI・Raw Input経路を使い、2回の物理ボタン押下間の録音時間・データ量・音声エネルギーを検証して時刻付きログを保存します。
 - Bluetooth実機試験では、マイクON中にWindowsのWinMMジョイスティック状態を534回読み取り、軸ずれ・誤ボタン・読取エラーはいずれも0でした。
 - 開発用の共存診断ツールは、Bluetoothマイク取得中にWinMMとDirectInputを同時かつ非排他的に監視します。DirectInputでの実機結果、およびSteam Input版Monster Hunter Wilds・FF14を起動した状態での最終確認は未完了です。実行手順は`tools/GameInputInterferenceProbe/README.md`にあります。
