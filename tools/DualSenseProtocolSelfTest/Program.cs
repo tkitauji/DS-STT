@@ -15,7 +15,7 @@ bluetoothReleased[0] = 0x31;
 bluetoothReleased[1] = 0x00;
 
 var bluetoothPressed = (byte[])bluetoothReleased.Clone();
-bluetoothPressed[10] = 0x10;
+bluetoothPressed[11] = 0x02;
 
 var bluetoothAudio = (byte[])bluetoothPressed.Clone();
 bluetoothAudio[1] = 0x02;
@@ -25,40 +25,59 @@ var usbReleased = new byte[64];
 usbReleased[0] = 0x01;
 
 var usbPressed = (byte[])usbReleased.Clone();
-usbPressed[9] = 0x10;
+usbPressed[10] = 0x02;
 
-Assert(DualSenseBluetoothCapture.IsCreateButtonReport(bluetoothReleased),
+Assert(DualSenseBluetoothCapture.IsTouchpadButtonReport(bluetoothReleased),
     "Bluetooth controller report should be accepted.");
-Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothReleased),
+Assert(!DualSenseBluetoothCapture.HasTouchpadButtonPressed(bluetoothReleased),
     "Released Bluetooth button should be false.");
-Assert(DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothPressed),
+Assert(DualSenseBluetoothCapture.HasTouchpadButtonPressed(bluetoothPressed),
     "Pressed Bluetooth button should be true.");
-Assert(!DualSenseBluetoothCapture.IsCreateButtonReport(bluetoothAudio),
+Assert(!DualSenseBluetoothCapture.IsTouchpadButtonReport(bluetoothAudio),
     "Bluetooth microphone audio must not look like a button report.");
 
-Assert(DualSenseCreateButtonMonitor.IsCreateButtonReport(usbReleased),
+Assert(DualSenseTouchpadButtonMonitor.IsTouchpadButtonReport(usbReleased),
     "USB controller report should be accepted.");
-Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbReleased),
+Assert(!DualSenseTouchpadButtonMonitor.HasTouchpadButtonPressed(usbReleased),
     "Released USB button should be false.");
-Assert(DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbPressed),
+Assert(DualSenseTouchpadButtonMonitor.HasTouchpadButtonPressed(usbPressed),
     "Pressed USB button should be true.");
-Assert(!DualSenseCreateButtonMonitor.IsCreateButtonReport(bluetoothPressed),
+Assert(!DualSenseTouchpadButtonMonitor.IsTouchpadButtonReport(bluetoothPressed),
     "Bluetooth input must not be parsed using the USB layout.");
 
 var usbMuteOnly = (byte[])usbReleased.Clone();
 usbMuteOnly[10] = 0x04;
 var bluetoothMuteOnly = (byte[])bluetoothReleased.Clone();
 bluetoothMuteOnly[11] = 0x04;
-Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(usbMuteOnly),
+Assert(!DualSenseTouchpadButtonMonitor.HasTouchpadButtonPressed(usbMuteOnly),
     "USB microphone button must not trigger Create.");
-Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothMuteOnly),
+Assert(!DualSenseBluetoothCapture.HasTouchpadButtonPressed(bluetoothMuteOnly),
     "Bluetooth microphone button must not trigger Create.");
-Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(bluetoothAudio),
+Assert(!DualSenseBluetoothCapture.HasTouchpadButtonPressed(bluetoothAudio),
     "Audio frames must never trigger Create.");
-Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(new byte[9]),
+Assert(!DualSenseTouchpadButtonMonitor.HasTouchpadButtonPressed(new byte[9]),
     "Truncated USB reports must be ignored.");
-Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(new byte[10]),
+Assert(!DualSenseBluetoothCapture.HasTouchpadButtonPressed(new byte[10]),
     "Truncated Bluetooth reports must be ignored.");
+
+var hold = new LongPressDetector();
+Assert(!hold.Update(true, 0), "Held at connection must not trigger.");
+Assert(!hold.Update(false, 10), "Release arms long press.");
+Assert(!hold.Update(true, 20), "Short press must not trigger.");
+Assert(!hold.Update(false, 100), "Short release must not trigger.");
+for (int t = 200; t < 800; t += 100)
+    Assert(!hold.Update(true, t), "Before threshold must not trigger.");
+Assert(hold.Update(true, 800), "600ms hold must trigger once.");
+Assert(!hold.Update(true, 900), "Continued hold must not repeat.");
+hold.Update(false, 1000);
+for (int t = 1100; t < 1700; t += 100) hold.Update(true, t);
+Assert(hold.Update(true, 1700), "A second hold can stop recording.");
+hold.Update(false, 1800);
+hold.Update(true, 1900);
+Assert(!hold.Update(true, 3000), "Input gap must cancel pending hold.");
+var createOnly = (byte[])bluetoothReleased.Clone();
+createOnly[10] = 0x10;
+Assert(!DualSenseBluetoothCapture.HasTouchpadButtonPressed(createOnly), "Create must no longer trigger.");
 
 var processedBeforeStop = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 int totalPcm = 0;

@@ -73,7 +73,7 @@ if ($probeExitCode -ne 0) {
 }
 
 $passingResult = Select-String -LiteralPath $report -SimpleMatch -Pattern `
-  'RESULT|USB standard microphone and physical Create-button capture passed.'
+  'RESULT|USB standard microphone and physical touchpad-long-press capture passed.'
 if (-not $passingResult) {
   throw "The probe exited successfully without its required passing result. Report: $report"
 }

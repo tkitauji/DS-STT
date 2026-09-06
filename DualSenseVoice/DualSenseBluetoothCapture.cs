@@ -28,8 +28,8 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
     private const int InputReportLength = 78;
     private const int MediaReportLength = 398;
     private const int OpusFrameSamples = 480;
-    private const int BluetoothButtons1Offset = 10;
-    private const byte CreateButtonMask = 0x10;
+    private const int BluetoothButtons2Offset = 11;
+    private const byte TouchpadButtonMask = 0x02;
 
     private readonly object audioLock = new();
     private readonly short[] pcm = new short[OpusFrameSamples];
@@ -47,10 +47,10 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
     private long sampleEnergy;
     private int accepting;
     private int recording;
-    private bool previousCreateButtonPressed;
+    private readonly LongPressDetector longPress = new();
     private bool disposed;
 
-    internal event EventHandler? CreateButtonPressed;
+    internal event EventHandler? TouchpadButtonPressed;
     internal event Action<byte[]>? PcmReceived;
     internal event EventHandler<DualSenseConnectionLostEventArgs>? ConnectionLost;
 
@@ -219,12 +219,11 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
 
     private void ProcessRawReport(byte[] report)
     {
-        if (IsCreateButtonReport(report))
+        if (IsTouchpadButtonReport(report))
         {
-            bool pressed = (report[BluetoothButtons1Offset] & CreateButtonMask) != 0;
-            if (pressed && !previousCreateButtonPressed)
-                CreateButtonPressed?.Invoke(this, EventArgs.Empty);
-            previousCreateButtonPressed = pressed;
+            bool pressed = (report[BluetoothButtons2Offset] & TouchpadButtonMask) != 0;
+            if (longPress.Update(pressed, Environment.TickCount64))
+                TouchpadButtonPressed?.Invoke(this, EventArgs.Empty);
         }
 
         if (Volatile.Read(ref accepting) == 0 ||
@@ -261,14 +260,14 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
         }
     }
 
-    internal static bool IsCreateButtonReport(ReadOnlySpan<byte> report) =>
-        report.Length > BluetoothButtons1Offset &&
+    internal static bool IsTouchpadButtonReport(ReadOnlySpan<byte> report) =>
+        report.Length > BluetoothButtons2Offset &&
         report[0] == 0x31 &&
         (report[1] & 0x02) == 0;
 
-    internal static bool HasCreateButtonPressed(ReadOnlySpan<byte> report) =>
-        IsCreateButtonReport(report) &&
-        (report[BluetoothButtons1Offset] & CreateButtonMask) != 0;
+    internal static bool HasTouchpadButtonPressed(ReadOnlySpan<byte> report) =>
+        IsTouchpadButtonReport(report) &&
+        (report[BluetoothButtons2Offset] & TouchpadButtonMask) != 0;
 
     internal async Task<DualSenseBluetoothRecording> StopRecordingAsync()
     {

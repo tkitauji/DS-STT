@@ -7,8 +7,8 @@
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel>
    <TextBlock Text="D U A L S E N S E   V O I C E" Foreground="{DynamicResource Accent}" FontSize="12" FontWeight="Bold"/>
-   <TextBlock Text="Createボタンを押して、話す。" FontSize="30" FontWeight="SemiBold" Margin="0,7,0,4"/>
-   <TextBlock Text="1回押して音声入力、もう1回押して文字起こし。Bluetoothのまま使えます。" Foreground="{DynamicResource Muted}" FontSize="14"/>
+   <TextBlock Text="タッチパッドを0.6秒押し込んで、話す。" FontSize="30" FontWeight="SemiBold" Margin="0,7,0,4"/>
+   <TextBlock Text="0.6秒長押しで音声入力、もう一度長押しで文字起こし。Bluetoothのまま使えます。" Foreground="{DynamicResource Muted}" FontSize="14"/>
   </StackPanel>
   <Border Grid.Row="1" Background="{DynamicResource Surface}" CornerRadius="14" Padding="18" Margin="0,24,0,14">
    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -24,7 +24,7 @@
   </Border>
   <Border Grid.Row="3" Background="{DynamicResource Surface}" CornerRadius="14" Padding="18">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <StackPanel><TextBlock x:Name="StatusText" Text="DualSenseを接続してください" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive"/><TextBlock Text="CreateボタンでON／ミュート・開始音と終了音で通知" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,5,0,0"/></StackPanel>
+    <StackPanel><TextBlock x:Name="StatusText" Text="DualSenseを接続してください" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive"/><TextBlock Text="タッチパッド長押しでON／ミュート・開始音と終了音で通知" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,5,0,0"/></StackPanel>
     <TextBox Grid.Row="1" x:Name="TranscriptBox" Margin="0,14,0,0" Padding="12" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" FontSize="18" Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" AutomationProperties.Name="文字起こし結果" AutomationProperties.HelpText="認識した文章を確認、編集できます"/>
    </Grid>
   </Border>

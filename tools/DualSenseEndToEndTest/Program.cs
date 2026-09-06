@@ -23,11 +23,11 @@ try
 
     if (buttonMode)
     {
-        Console.WriteLine("BUTTON_WAIT|press the physical Create button to unmute");
-        await WaitForCreateButtonAsync(capture, TimeSpan.FromSeconds(45));
+        Console.WriteLine("BUTTON_WAIT|press the physical touchpad long press to unmute");
+        await WaitForTouchpadButtonAsync(capture, TimeSpan.FromSeconds(45));
         capture.StartRecording(wavePath);
-        Console.WriteLine("BUTTON_UNMUTED|speak, then press the Create button again");
-        await WaitForCreateButtonAsync(capture, TimeSpan.FromSeconds(45));
+        Console.WriteLine("BUTTON_UNMUTED|speak, then press the touchpad long press again");
+        await WaitForTouchpadButtonAsync(capture, TimeSpan.FromSeconds(45));
     }
     else
     {
@@ -60,20 +60,20 @@ finally
     if (File.Exists(wavePath)) File.Delete(wavePath);
 }
 
-static async Task WaitForCreateButtonAsync(
+static async Task WaitForTouchpadButtonAsync(
     DualSenseBluetoothCapture capture,
     TimeSpan timeout)
 {
     var pressed = new TaskCompletionSource(
         TaskCreationOptions.RunContinuationsAsynchronously);
     EventHandler handler = (_, _) => pressed.TrySetResult();
-    capture.CreateButtonPressed += handler;
+    capture.TouchpadButtonPressed += handler;
     try
     {
         await pressed.Task.WaitAsync(timeout);
     }
     finally
     {
-        capture.CreateButtonPressed -= handler;
+        capture.TouchpadButtonPressed -= handler;
     }
 }

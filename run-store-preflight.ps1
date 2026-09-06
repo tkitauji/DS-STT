@@ -254,7 +254,7 @@ if ($Mode -eq 'Submission') {
 
   $usbCheck = Test-ReportContent -Directory $EvidenceDirectory -Filter 'usb-*.log' -RequiredLines @(
     'DUALSENSE_VOICE_USB_REPORT|version=1',
-    'RESULT|USB standard microphone and physical Create-button capture passed.'
+    'RESULT|USB standard microphone and physical touchpad-long-press capture passed.'
   )
   Add-Check 'USB microphone and physical button' $usbCheck.Passed $usbCheck.Detail
 

@@ -4,20 +4,20 @@ namespace DualSenseVoice;
 
 internal sealed record DualSenseUsbDevice(string DevicePath, string FriendlyName);
 
-internal sealed class DualSenseCreateButtonMonitor : IDisposable
+internal sealed class DualSenseTouchpadButtonMonitor : IDisposable
 {
     private const int VendorId = 0x054C;
     private const int ProductId = 0x0CE6;
-    // buttons[1], bit 4 (Create); USB payload starts after report ID.
-    private const int UsbButtons1Offset = 9;
-    private const byte CreateButtonMask = 0x10;
+    // buttons[2], bit 1: physical touchpad click (not touch contact).
+    private const int UsbButtons2Offset = 10;
+    private const byte TouchpadButtonMask = 0x02;
 
     private readonly DualSenseBluetoothCapture.RawInputReceiver rawInput;
-    private bool previousPressed;
+    private readonly LongPressDetector longPress = new();
 
-    internal event EventHandler? CreateButtonPressed;
+    internal event EventHandler? TouchpadButtonPressed;
 
-    private DualSenseCreateButtonMonitor(string devicePath)
+    private DualSenseTouchpadButtonMonitor(string devicePath)
     {
         rawInput = new DualSenseBluetoothCapture.RawInputReceiver(
             devicePath,
@@ -47,7 +47,7 @@ internal sealed class DualSenseCreateButtonMonitor : IDisposable
         return results;
     }
 
-    internal static DualSenseCreateButtonMonitor Connect(string devicePath) => new(devicePath);
+    internal static DualSenseTouchpadButtonMonitor Connect(string devicePath) => new(devicePath);
 
     private static bool IsDualSense(HidDevice device)
     {
@@ -59,19 +59,18 @@ internal sealed class DualSenseCreateButtonMonitor : IDisposable
 
     private void ProcessRawReport(byte[] report)
     {
-        if (!IsCreateButtonReport(report)) return;
-        bool pressed = HasCreateButtonPressed(report);
-        if (pressed && !previousPressed)
-            CreateButtonPressed?.Invoke(this, EventArgs.Empty);
-        previousPressed = pressed;
+        if (!IsTouchpadButtonReport(report)) return;
+        bool pressed = HasTouchpadButtonPressed(report);
+        if (longPress.Update(pressed, Environment.TickCount64))
+            TouchpadButtonPressed?.Invoke(this, EventArgs.Empty);
     }
 
-    internal static bool IsCreateButtonReport(ReadOnlySpan<byte> report) =>
-        report.Length > UsbButtons1Offset && report[0] == 0x01;
+    internal static bool IsTouchpadButtonReport(ReadOnlySpan<byte> report) =>
+        report.Length > UsbButtons2Offset && report[0] == 0x01;
 
-    internal static bool HasCreateButtonPressed(ReadOnlySpan<byte> report) =>
-        IsCreateButtonReport(report) &&
-        (report[UsbButtons1Offset] & CreateButtonMask) != 0;
+    internal static bool HasTouchpadButtonPressed(ReadOnlySpan<byte> report) =>
+        IsTouchpadButtonReport(report) &&
+        (report[UsbButtons2Offset] & TouchpadButtonMask) != 0;
 
     public void Dispose() => rawInput.Dispose();
 }

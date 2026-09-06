@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     readonly DispatcherTimer recordingTimer = new();
     readonly DispatcherTimer connectionTimer = new();
     DualSenseBluetoothCapture? bluetoothCapture;
-    DualSenseCreateButtonMonitor? usbButtonMonitor;
+    DualSenseTouchpadButtonMonitor? usbButtonMonitor;
     WasapiCapture? windowsCapture;
     WaveFileWriter? windowsWriter;
     TaskCompletionSource? windowsCaptureStopped;
@@ -154,7 +154,7 @@ public partial class MainWindow : Window
         {
             var choices = new List<AudioInputChoice>();
             DualSenseUsbDevice? usbController =
-                DualSenseCreateButtonMonitor.EnumerateConnectedUsb().FirstOrDefault();
+                DualSenseTouchpadButtonMonitor.EnumerateConnectedUsb().FirstOrDefault();
 
             if (usbController is not null)
             {
@@ -220,7 +220,7 @@ public partial class MainWindow : Window
             var bluetoothPaths = DualSenseBluetoothCapture.EnumerateConnected()
                 .Select(device => device.DevicePath)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var usbPaths = DualSenseCreateButtonMonitor.EnumerateConnectedUsb()
+            var usbPaths = DualSenseTouchpadButtonMonitor.EnumerateConnectedUsb()
                 .Select(device => device.DevicePath)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -267,18 +267,18 @@ public partial class MainWindow : Window
             {
                 bluetoothCapture = DualSenseBluetoothCapture.Connect(
                     choice.BluetoothDevicePath!);
-                bluetoothCapture.CreateButtonPressed += Controller_CreateButtonPressed;
+                bluetoothCapture.TouchpadButtonPressed += Controller_TouchpadButtonPressed;
                 bluetoothCapture.ConnectionLost += Controller_ConnectionLost;
             }
             else
             {
-                usbButtonMonitor = DualSenseCreateButtonMonitor.Connect(
+                usbButtonMonitor = DualSenseTouchpadButtonMonitor.Connect(
                     choice.ButtonDevicePath!);
-                usbButtonMonitor.CreateButtonPressed += Controller_CreateButtonPressed;
+                usbButtonMonitor.TouchpadButtonPressed += Controller_TouchpadButtonPressed;
             }
 
             SetStatus(HasValidModel
-                ? "ミュート中 — DualSenseのCreateボタンで音声入力を開始"
+                ? "ミュート中 — DualSenseのタッチパッド長押しで音声入力を開始"
                 : "ミュート中 — 先に認識モデルを準備してください", HasValidModel ? RecordingOverlayState.Ready : RecordingOverlayState.Attention);
         }
         catch (Exception ex)
@@ -292,7 +292,7 @@ public partial class MainWindow : Window
     {
         if (bluetoothCapture is not null)
         {
-            bluetoothCapture.CreateButtonPressed -= Controller_CreateButtonPressed;
+            bluetoothCapture.TouchpadButtonPressed -= Controller_TouchpadButtonPressed;
             bluetoothCapture.ConnectionLost -= Controller_ConnectionLost;
             bluetoothCapture.Dispose();
             bluetoothCapture = null;
@@ -300,13 +300,13 @@ public partial class MainWindow : Window
 
         if (usbButtonMonitor is not null)
         {
-            usbButtonMonitor.CreateButtonPressed -= Controller_CreateButtonPressed;
+            usbButtonMonitor.TouchpadButtonPressed -= Controller_TouchpadButtonPressed;
             usbButtonMonitor.Dispose();
             usbButtonMonitor = null;
         }
     }
 
-    void Controller_CreateButtonPressed(object? sender, EventArgs e)
+    void Controller_TouchpadButtonPressed(object? sender, EventArgs e)
     {
         if (!Dispatcher.HasShutdownStarted)
             Dispatcher.BeginInvoke(new Action(() => _ = ToggleFromControllerAsync()));
@@ -507,7 +507,7 @@ public partial class MainWindow : Window
                     : "ミュート中 — 音声を認識できませんでした"
                 : connectionLost
                     ? "接続が切れました — 受信済み音声の文字起こしは完了しました"
-                    : "ミュート中 — 文字起こし完了。もう一度押すと話せます";
+                    : "ミュート中 — 文字起こし完了。もう一度長押しすると話せます";
             if (!automatic && !connectionLost && AutoPasteBox.IsChecked == true && TranscriptBox.Text.Length > 0)
             {
                 AutomaticPasteResult result = await PasteToPreviousWindowAsync();
@@ -759,7 +759,7 @@ public partial class MainWindow : Window
             File.Move(temporaryPath, ModelPath, true);
             modelIsValid = true;
             UpdateModelState();
-            SetStatus("ミュート中 — DualSenseのCreateボタンで音声入力を開始", RecordingOverlayState.Ready);
+            SetStatus("ミュート中 — DualSenseのタッチパッド長押しで音声入力を開始", RecordingOverlayState.Ready);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
