@@ -60,6 +60,23 @@ Assert(!DualSenseCreateButtonMonitor.HasCreateButtonPressed(new byte[9]),
 Assert(!DualSenseBluetoothCapture.HasCreateButtonPressed(new byte[10]),
     "Truncated Bluetooth reports must be ignored.");
 
+var processedBeforeStop = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+int totalPcm = 0;
+await using (var live = new LiveTranscription(new WaveFormat(16000, 16, 1), (pcm, token) =>
+{
+    Interlocked.Add(ref totalPcm, pcm.Length);
+    processedBeforeStop.TrySetResult();
+    return Task.FromResult("文");
+}))
+{
+    var firstChunk = Enumerable.Repeat((byte)0x20, 320000).ToArray();
+    live.Append(firstChunk, firstChunk.Length);
+    await processedBeforeStop.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    live.Append(new byte[3200], 3200);
+    Assert(await live.CompleteAsync() == "文文", "Final tail must follow background transcription.");
+    Assert(totalPcm == 323200, "PCM must be processed exactly once without losing the tail.");
+}
+
 List<RuntimeLibrary> optimizedOrder = App.GetWhisperRuntimeOrder(optimizedCpu: true);
 List<RuntimeLibrary> compatibleOrder = App.GetWhisperRuntimeOrder(optimizedCpu: false);
 Assert(optimizedOrder.SequenceEqual(

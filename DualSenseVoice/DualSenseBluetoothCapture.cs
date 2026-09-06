@@ -51,6 +51,7 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
     private bool disposed;
 
     internal event EventHandler? CreateButtonPressed;
+    internal event Action<byte[]>? PcmReceived;
     internal event EventHandler<DualSenseConnectionLostEventArgs>? ConnectionLost;
 
     internal bool IsRecording => Volatile.Read(ref recording) != 0;
@@ -248,6 +249,7 @@ internal sealed class DualSenseBluetoothCapture : IDisposable
             {
                 if (Volatile.Read(ref accepting) == 0 || waveWriter is null) return;
                 waveWriter.Write(MemoryMarshal.AsBytes(pcm.AsSpan(0, samples)));
+                PcmReceived?.Invoke(MemoryMarshal.AsBytes(pcm.AsSpan(0, samples)).ToArray());
             }
             Interlocked.Increment(ref decodedFrames);
             Interlocked.Add(ref decodedSamples, samples);

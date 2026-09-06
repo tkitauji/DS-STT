@@ -86,8 +86,8 @@ internal static class Program
         IntPtr foreground = GetForegroundWindow();
         overlay.Show();
         long styles = GetWindowLongPtr(new WindowInteropHelper(overlay).Handle, -20).ToInt64();
-        Assert((styles & 0x080000A0) == 0x080000A0,
-            "Overlay must be non-activating, click-through, and absent from the taskbar.");
+        Assert((styles & 0x08000080) == 0x08000080 && (styles & 0x20) == 0,
+            "Overlay must be non-activating, interactive, and absent from the taskbar.");
         Assert(GetForegroundWindow() == foreground, "Showing overlay stole focus.");
         foreach (RecordingOverlayState state in Enum.GetValues<RecordingOverlayState>())
         {

@@ -36,6 +36,8 @@ public partial class MainWindow : Window
     bool suppressDeviceSelection;
     bool windowClosed;
     bool? modelIsValid;
+    LiveTranscription? liveTranscription;
+    bool servicesStarted;
     readonly RecordingOverlay overlay = new();
 
     bool IsRecording =>
@@ -79,14 +81,7 @@ public partial class MainWindow : Window
         recordingTimer.Tick += RecordingTimer_Tick;
         connectionTimer.Interval = TimeSpan.FromSeconds(3);
         connectionTimer.Tick += ConnectionTimer_Tick;
-        Loaded += (_, _) =>
-        {
-            overlay.Show();
-            CleanupInterruptedFiles(Path.GetTempPath(), ModelPath);
-            UpdateModelState();
-            RefreshDevices();
-            connectionTimer.Start();
-        };
+        Loaded += (_, _) => StartServices();
         Closed += (_, _) =>
         {
             windowClosed = true;
@@ -96,10 +91,54 @@ public partial class MainWindow : Window
             connectionTimer.Stop();
             StopWindowsCaptureImmediately();
             DisconnectInput();
+            if (liveTranscription is not null) _ = liveTranscription.DisposeAsync();
             DisposeDeviceChoices();
             DeleteRecordingFile();
             audioDevices.Dispose();
         };
+    }
+
+    void StartServices()
+    {
+        if (servicesStarted) return;
+        servicesStarted = true;
+        overlay.Show();
+        CleanupInterruptedFiles(Path.GetTempPath(), ModelPath);
+        UpdateModelState();
+        RefreshDevices();
+        connectionTimer.Start();
+    }
+
+    internal void StartOverlayMode()
+    {
+        ShowInTaskbar = false;
+        ShowActivated = false;
+        var menu = new System.Windows.Controls.ContextMenu();
+        void Add(string title, Action action)
+        {
+            var item = new System.Windows.Controls.MenuItem { Header = title };
+            item.Click += (_, _) => action();
+            menu.Items.Add(item);
+        }
+        Add("認識モデルを準備", () => { if (DownloadButton.IsEnabled) Download_Click(this, new RoutedEventArgs()); });
+        Add("接続を再読込", RefreshDevices);
+        Add("結果をコピー", () => Copy_Click(this, new RoutedEventArgs()));
+        var paste = new System.Windows.Controls.MenuItem { Header = "終了時に自動貼り付け", IsChecked = true, IsCheckable = true };
+        paste.Click += (_, _) => AutoPasteBox.IsChecked = paste.IsChecked;
+        menu.Items.Add(paste);
+        Add("表示を右上へ", () => overlay.Place(false, false));
+        Add("表示を左上へ", () => overlay.Place(true, false));
+        Add("表示を大きく", () => overlay.Place(false, true));
+        Add("終了", () => { Close(); System.Windows.Application.Current.Shutdown(); });
+        overlay.ContextMenu = menu;
+        menu.Opened += (_, _) => overlay.ToolTip = StatusText.Text + "\n" + ModelStatus.Text;
+        StartServices();
+    }
+
+    internal void ShowOverlayStatus()
+    {
+        overlay.ToolTip = StatusText.Text + "\n" + ModelStatus.Text;
+        overlay.Show();
     }
 
     void RefreshDevices()
@@ -321,7 +360,11 @@ public partial class MainWindow : Window
                 $"DualSenseVoice-{Guid.NewGuid():N}.wav");
 
             if (choice.Kind == AudioInputKind.DualSenseBluetooth)
+            {
+                liveTranscription = new LiveTranscription(ModelPath, new WaveFormat(48000, 16, 1));
+                bluetoothCapture!.PcmReceived += BluetoothPcmReceived;
                 bluetoothCapture!.StartRecording(recordingPath);
+            }
             else
                 StartWindowsCapture(choice.WindowsDevice!, recordingPath);
 
@@ -335,6 +378,9 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StopWindowsCaptureImmediately();
+            if (bluetoothCapture is not null) bluetoothCapture.PcmReceived -= BluetoothPcmReceived;
+            if (liveTranscription is not null) _ = liveTranscription.DisposeAsync();
+            liveTranscription = null;
             DeleteRecordingFile();
             SetStatus($"音声入力を開始できません: {ex.Message}");
         }
@@ -346,13 +392,19 @@ public partial class MainWindow : Window
             TaskCreationOptions.RunContinuationsAsynchronously);
         windowsCapture = new WasapiCapture(device);
         windowsWriter = new WaveFileWriter(wavePath, windowsCapture.WaveFormat);
+        liveTranscription = new LiveTranscription(ModelPath, windowsCapture.WaveFormat);
         windowsCapture.DataAvailable += WindowsCapture_DataAvailable;
         windowsCapture.RecordingStopped += WindowsCapture_RecordingStopped;
         windowsCapture.StartRecording();
     }
 
-    void WindowsCapture_DataAvailable(object? sender, WaveInEventArgs e) =>
+    void BluetoothPcmReceived(byte[] bytes) => liveTranscription?.Append(bytes, bytes.Length);
+
+    void WindowsCapture_DataAvailable(object? sender, WaveInEventArgs e)
+    {
         windowsWriter?.Write(e.Buffer, 0, e.BytesRecorded);
+        liveTranscription?.Append(e.Buffer, e.BytesRecorded);
+    }
 
     void WindowsCapture_RecordingStopped(object? sender, StoppedEventArgs e)
     {
@@ -447,21 +499,8 @@ public partial class MainWindow : Window
                     ? $"60秒で自動ミュート — 音声 {seconds:F1}秒を文字に変換中…"
                     : $"ミュート中 — 音声 {seconds:F1}秒を文字に変換中…", RecordingOverlayState.Processing);
 
-            using var reader = new WaveFileReader(recordingPath!);
-            using var wav = new MemoryStream();
-            var resampler = new WdlResamplingSampleProvider(
-                reader.ToSampleProvider(),
-                16000);
-            WaveFileWriter.WriteWavFileToStream(wav, resampler.ToWaveProvider16());
-            wav.Position = 0;
-
-            using var factory = WhisperFactory.FromPath(ModelPath);
-            using var processor = factory.CreateBuilder().WithLanguage("ja").Build();
-            var text = new System.Text.StringBuilder();
-            await foreach (var segment in processor.ProcessAsync(wav))
-                text.Append(segment.Text);
-
-            TranscriptBox.Text = text.ToString().Trim();
+            TranscriptBox.Text = await liveTranscription!.CompleteAsync();
+            if (windowClosed) return;
             string completionStatus = TranscriptBox.Text.Length == 0
                 ? connectionLost
                     ? "接続が切れました — 受信済み音声を認識できませんでした"
@@ -469,7 +508,7 @@ public partial class MainWindow : Window
                 : connectionLost
                     ? "接続が切れました — 受信済み音声の文字起こしは完了しました"
                     : "ミュート中 — 文字起こし完了。もう一度押すと話せます";
-            if (AutoPasteBox.IsChecked == true && TranscriptBox.Text.Length > 0)
+            if (!automatic && !connectionLost && AutoPasteBox.IsChecked == true && TranscriptBox.Text.Length > 0)
             {
                 AutomaticPasteResult result = await PasteToPreviousWindowAsync();
                 completionStatus += result switch
@@ -488,6 +527,9 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (bluetoothCapture is not null) bluetoothCapture.PcmReceived -= BluetoothPcmReceived;
+            if (liveTranscription is not null) await liveTranscription.DisposeAsync();
+            liveTranscription = null;
             StopWindowsCaptureImmediately();
             DeleteRecordingFile();
             busy = false;
@@ -569,14 +611,26 @@ public partial class MainWindow : Window
             !IsWindow(previousWindow))
             return AutomaticPasteResult.ClipboardOnly;
 
-        SetForegroundWindow(previousWindow);
-        await Task.Delay(100);
+        // Never switch back to a game after the user has changed applications.
         if (!IsSafePasteTarget(
                 previousWindow,
                 ownWindow,
                 GetForegroundWindow(),
                 IsWindow(previousWindow)))
             return AutomaticPasteResult.ClipboardOnly;
+
+        GetWindowThreadProcessId(previousWindow, out uint processId);
+        using var process = System.Diagnostics.Process.GetProcessById((int)processId);
+        if (process.ProcessName.Equals("ffxiv_dx11", StringComparison.OrdinalIgnoreCase) ||
+            process.ProcessName.Equals("ffxiv", StringComparison.OrdinalIgnoreCase))
+        {
+            var enter = new[] { Key(0x0D, false), Key(0x0D, true) };
+            if (SendInput(2, enter, Marshal.SizeOf<INPUT>()) != 2)
+                return AutomaticPasteResult.ClipboardOnly;
+            await Task.Delay(150);
+            if (windowClosed || GetForegroundWindow() != previousWindow)
+                return AutomaticPasteResult.ClipboardOnly;
+        }
 
         var inputs = new[]
         {
@@ -808,6 +862,7 @@ public partial class MainWindow : Window
     void SetStatus(string text, RecordingOverlayState state = RecordingOverlayState.Attention)
     {
         StatusText.Text = text;
+        overlay.ToolTip = text + "\n" + ModelStatus.Text;
         overlay.SetState(state);
         RaiseLiveRegionChanged(StatusText);
     }
@@ -815,6 +870,7 @@ public partial class MainWindow : Window
     void SetModelStatus(string text)
     {
         ModelStatus.Text = text;
+        overlay.ToolTip = StatusText.Text + "\n" + text;
         RaiseLiveRegionChanged(ModelStatus);
     }
 
@@ -847,7 +903,19 @@ public partial class MainWindow : Window
     struct InputUnion
     {
         [FieldOffset(0)] public KEYBDINPUT ki;
+        [FieldOffset(0)] public MOUSEINPUT mi;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct MOUSEINPUT
+    {
+        public int dx, dy;
+        public uint mouseData, dwFlags, time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
 
     [StructLayout(LayoutKind.Sequential)]
     struct KEYBDINPUT

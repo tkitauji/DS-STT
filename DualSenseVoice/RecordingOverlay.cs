@@ -32,7 +32,7 @@ internal sealed class RecordingOverlay : Window
         ShowActivated = false;
         ShowInTaskbar = false;
         Focusable = false;
-        IsHitTestVisible = false;
+        IsHitTestVisible = true;
         var panel = new StackPanel { Orientation = Orientation.Horizontal };
         var iconPanel = new Grid();
         iconPanel.Children.Add(icon);
@@ -44,8 +44,8 @@ internal sealed class RecordingOverlay : Window
         {
             var source = (HwndSource)PresentationSource.FromVisual(this);
             var handle = source.Handle;
-            // Layered window + TRANSPARENT passes mouse input to other processes.
-            SetWindowLongPtr(handle, -20, new IntPtr(GetWindowLongPtr(handle, -20).ToInt64() | 0x20 | 0x80 | 0x08000000));
+            // Only the small overlay accepts mouse input for its context menu.
+            SetWindowLongPtr(handle, -20, new IntPtr(GetWindowLongPtr(handle, -20).ToInt64() | 0x80 | 0x08000000));
             source.AddHook((IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam, ref bool handled) =>
             {
                 if (message == 0x21) { handled = true; return new IntPtr(3); }

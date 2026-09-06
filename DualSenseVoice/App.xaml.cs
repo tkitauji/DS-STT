@@ -45,7 +45,8 @@ public partial class App : System.Windows.Application
         SystemParameters.StaticPropertyChanged += SystemParameters_StaticPropertyChanged;
         base.OnStartup(e);
         MainWindow = new MainWindow();
-        MainWindow.Show();
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        ((MainWindow)MainWindow).StartOverlayMode();
     }
 
     private static void SignalExistingInstance()
@@ -85,11 +86,7 @@ public partial class App : System.Windows.Application
 
     private void ActivateMainWindow()
     {
-        if (MainWindow is null) return;
-        if (MainWindow.WindowState == WindowState.Minimized)
-            MainWindow.WindowState = WindowState.Normal;
-        MainWindow.Show();
-        MainWindow.Activate();
+        if (MainWindow is MainWindow controller) controller.ShowOverlayStatus();
     }
 
     private void SystemParameters_StaticPropertyChanged(
