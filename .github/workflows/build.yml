@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -34,6 +35,7 @@ jobs:
           ./build-msix.ps1
           ./run-store-preflight.ps1 -Mode Development
       - name: Upload MSIX
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: DualSenseVoice-dev-msix
