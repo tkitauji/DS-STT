@@ -38,3 +38,4 @@ jobs:
         with:
           name: DualSenseVoice-dev-msix
           path: artifacts/package/*.msix
+          retention-days: 7
