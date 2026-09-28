@@ -61,7 +61,7 @@ Partner Centerの制限付き機能の説明には、`runFullTrust`を「DualSen
 
 ## 開発用MSIXの実機インストール
 
-通常のpush・pull requestではMSIXの作成と検証まで実行し、成果物はアップロードしません。CIの開発用MSIXが必要な場合は、GitHub Actionsの「Windows build」から「Run workflow」を実行してください。手動実行時の成果物 `DualSenseVoice-dev-msix` は7日間保持します。この成果物は未署名の開発用MSIXであり、以下の自己署名ZIP配布物とは異なります。
+通常のpush・pull requestではMSIXの作成と検証まで実行し、成果物はアップロードしません。CIの開発用MSIXが必要な場合は、GitHub Actionsの「Windows build」から「Run workflow」を実行してください。手動実行時の成果物 `DualSenseVoice-dev-msix` は1日間保持します。この成果物は未署名の開発用MSIXであり、以下の自己署名ZIP配布物とは異なります。
 
 配布物 `DualSenseVoice-dev-msix-v1.0.0.zip` は、自己署名した開発用MSIX、公開証明書、インストール・アンインストールスクリプトを含みます。これはStore公開版ではありません。
 
